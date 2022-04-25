@@ -21,14 +21,14 @@ import           GHC.Generics              (Generic)
 import           Prelude                   (Show (..))
 import qualified Prelude                   as Pr
 
-import           Schema                    (ToSchema)
+import           Data.OpenApi.Schema                    (ToSchema)
 import qualified PlutusTx
 import           PlutusTx.Prelude          as Plutus ( Eq(..), (&&), Integer )
-import           Ledger                    ( TokenName, CurrencySymbol, PubKeyHash, ValidatorHash )
+import           Ledger                    ( TokenName, CurrencySymbol, PaymentPubKeyHash, ValidatorHash )
 import           Plutus.Contract           ( Endpoint, type (.\/) )
 
 newtype MarketParams = MarketParams
-    { feeAddr  :: PubKeyHash
+    { feeAddr  :: PaymentPubKeyHash
     } deriving (Generic, ToJSON, FromJSON)
 
 PlutusTx.makeIsDataIndexed ''MarketParams [('MarketParams, 0)]
@@ -36,13 +36,13 @@ PlutusTx.makeLift ''MarketParams
 
 
 data NFTSale = NFTSale
-    { nSeller    :: !PubKeyHash
+    { nSeller    :: !PaymentPubKeyHash
     , nPrice     :: !Plutus.Integer
     , nCurrency  :: !CurrencySymbol
     , nToken     :: !TokenName
-    , nRoyAddr   :: !PubKeyHash
+    , nRoyAddr   :: !PaymentPubKeyHash
     , nRoyPrct   :: !Plutus.Integer
-    } deriving (Generic, ToJSON, FromJSON)
+    } deriving (Generic, ToJSON, FromJSON, Show)
 
 instance Eq NFTSale where
     {-# INLINABLE (==) #-}

@@ -45,11 +45,14 @@ library
                      , freer-extras
                      , lens
                      , nonempty-containers
+                     , openapi3
                      , playground-common
                      , plutus-contract
                      , plutus-chain-index
+                     , plutus-chain-index-core
                      , plutus-ledger
                      , plutus-ledger-api
+                     , plutus-ledger-constraints
                      , plutus-tx-plugin
                      , plutus-tx
                      , prettyprinter
@@ -85,4 +88,5 @@ executable datum-json
                       , bytestring
                       , cardano-api
                       , plutus-tx
+                      , plutus-ledger
                       , aeson

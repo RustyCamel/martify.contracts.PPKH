@@ -13,6 +13,7 @@ import Cardano.Api
       ScriptDataJsonSchema(ScriptDataJsonDetailedSchema) )
 import Cardano.Api.Shelley ( fromPlutusData )
 import qualified PlutusTx
+import Ledger.Address (PaymentPubKeyHash(..))
 
 import Market.Types (NFTSale(..))
 
@@ -24,14 +25,15 @@ import Market.Types (NFTSale(..))
 -- Constructs the JSON file for the datum, used as input to --tx-in-datum-file in cardano-cli
 main :: IO ()
 main = do
-  [price', seller', tn' ,cs', raddr', rprct'] <- getArgs
+  [seller', price', tn' ,cs', raddr', rprct'] <- getArgs
   let price  = read price'
-      seller = fromString seller'
+      seller = PaymentPubKeyHash $ fromString seller'
       tn     = fromString tn'
       cs     = fromString cs'
-      raddr  = fromString raddr'
+      raddr  = PaymentPubKeyHash $ fromString raddr'
       rprct  = read rprct'
       nfts   = NFTSale seller price cs tn raddr rprct
+  print seller
   writeData ("datum-" ++ show cs ++ "-" ++ tn' ++ ".json") nfts
   putStrLn "Done"
 -- Datum also needs to be passed when sending the token to the script (aka putting for sale)

@@ -22,7 +22,8 @@ import Plutus.Contract as Contract
       logInfo,
       awaitTxConfirmed,
       endpoint,
-      ownPubKeyHash,
+    --   ownPubKeyHash,
+      ownPaymentPubKeyHash,
       submitTxConstraintsWith,
       utxosAt,
       utxosTxOutTxAt,
@@ -37,7 +38,6 @@ import Ledger
     ( scriptAddress,
       pubKeyHash,
       getCardanoTxId,
-      pubKeyHashAddress,
       CurrencySymbol,
       TokenName,
       ValidatorHash,
@@ -45,31 +45,45 @@ import Ledger
       Datum(Datum),
       TxOut(txOutValue),
       TxOutRef,
-      ChainIndexTxOut, toTxOut )
+      ChainIndexTxOut, 
+      toTxOut, 
+      unPaymentPubKeyHash,
+      paymentPubKeyHash )
+import Ledger.Address
+    ( PaymentPubKeyHash,
+      pubKeyHashAddress,
+      StakePubKeyHash )
 import Ledger.Constraints as Constraints
     ( otherScript,
       typedValidatorLookups,
       unspentOutputs,
       mustPayToPubKey,
       mustPayToTheScript,
-      mustSpendScriptOutput, mustPayToOtherScript )
+      mustSpendScriptOutput, 
+      mustPayToOtherScript,
+      ownStakePubKeyHash )
 import Ledger.Value as Value
     ( singleton,
       valueOf )
 import qualified Plutus.V1.Ledger.Ada as Ada (lovelaceValueOf)
 import Plutus.ChainIndex.Tx ( ChainIndexTx(_citxData) )
 
-import           Market.Types               (MarketParams(..), NFTSale(..), SaleAction(..), SaleSchema, StartParams(..), BuyParams(..))
-import           Market.Onchain             as O2 ( Sale, typedBuyValidator, buyValidator, buyValidatorHash, nftDatum )
-import           Utility                    (wallet, walletPubKeyHash, mp)
+import           Market.Types         (MarketParams(..), NFTSale(..), SaleAction(..), SaleSchema, StartParams(..), BuyParams(..))
+import           Market.Onchain        as O2 ( Sale, typedBuyValidator, buyValidator, buyValidatorHash, nftDatum )
+import           Utility                    (wallet, walletPaymentPubKeyHash, mp)
 
 
 startSale :: StartParams -> Contract w SaleSchema Text ()
 startSale sp = do
-    pkh <- Contract.ownPubKeyHash
-    utxos <- utxosAt (pubKeyHashAddress pkh)
+    ppkh <- Contract.ownPaymentPubKeyHash
+    utxos <- utxosAt $ pubKeyHashAddress ppkh Nothing
     let val     = Value.singleton (sCs sp) (sTn sp) 1
-        nfts    = NFTSale { nSeller = pkh, nToken = sTn sp, nCurrency = sCs sp, nPrice = sPrice sp, nRoyAddr = walletPubKeyHash $ wallet 5, nRoyPrct = 0 }
+        nfts    = NFTSale { nSeller = (ppkh), 
+                            nToken = sTn sp, 
+                            nCurrency = sCs sp, 
+                            nPrice = sPrice sp, 
+                            nRoyAddr = walletPaymentPubKeyHash $ wallet 5, 
+                            nRoyPrct = 0 }
         lookups = Constraints.unspentOutputs utxos <>
                   Constraints.typedValidatorLookups (O2.typedBuyValidator mp)
         tx      = Constraints.mustPayToTheScript nfts val
@@ -80,7 +94,7 @@ startSale sp = do
 
 buy :: BuyParams -> Contract w SaleSchema Text ()
 buy bp = do
-    pkh <- Contract.ownPubKeyHash
+    ppkh <- Contract.ownPaymentPubKeyHash
     sale <- findSale (bCs bp, bTn bp)
     case sale of
         Nothing -> Contract.logError @String "No sale found"
@@ -93,7 +107,7 @@ buy bp = do
                           Constraints.unspentOutputs (Map.singleton oref o)   <>
                           Constraints.otherScript (O2.buyValidator mp)
                 tx      = Constraints.mustSpendScriptOutput oref r           <>
-                          Constraints.mustPayToPubKey pkh val                <>
+                          Constraints.mustPayToPubKey ppkh val                <>
                           Constraints.mustPayToPubKey (nSeller nfts) valAdaS <>
                           Constraints.mustPayToPubKey (feeAddr mp) valAdaF
             if nRoyPrct nfts == 0 then do
@@ -110,7 +124,7 @@ buy bp = do
 
 buy' :: (BuyParams, BuyParams) -> Contract w SaleSchema Text ()
 buy' (bp1, bp2) = do
-    pkh <- Contract.ownPubKeyHash
+    pkh <- Contract.ownPaymentPubKeyHash
     sale1 <- findSale (bCs bp1, bTn bp1)
     case sale1 of
         Nothing -> Contract.logError @String "No sale found"

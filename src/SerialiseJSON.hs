@@ -13,6 +13,7 @@ import Cardano.Api
       ScriptDataJsonSchema(ScriptDataJsonDetailedSchema) )
 import Cardano.Api.Shelley ( fromPlutusData )
 import qualified PlutusTx
+import Ledger.Address (PaymentPubKeyHash(..), unPaymentPubKeyHash, paymentPubKeyHash)
 
 import Market.Types (SaleAction(..), NFTSale(..))
 
@@ -26,14 +27,15 @@ testR = do
   writeData "update.json" Close
   putStrLn "Done"
 
+-- data PaymentPubKeyHash = PaymentPubKeyHash 
 
 nftEx :: NFTSale
 nftEx = NFTSale
     { nPrice    = 1
-    , nSeller   = "4b4355acf5e549d4cd26408723d1c8d87a98db7598e40bb1cd3b343e"
+    , nSeller   = (PaymentPubKeyHash "4b4355acf5e549d4cd26408723d1c8d87a98db7598e40bb1cd3b343e")
     , nToken    = "Vendere"
     , nCurrency = "8b050684e8d7e1abb2b79227f44c4c767025decb140e64efc783d046"
-    , nRoyAddr  = nSeller nftEx
+    , nRoyAddr  = (PaymentPubKeyHash "4b4355acf5e549d4cd26408723d1c8d87a98db7598e40bb1cd3b343e")
     , nRoyPrct  = 0
     } -- This is an example to fill with real data
       -- The `nSeller` needs to be in Base16 format, not Bech32 (addr1...).

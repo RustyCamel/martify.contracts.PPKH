@@ -23,9 +23,10 @@ import           Codec.Serialise       ( serialise )
 import           Cardano.Api.Shelley (PlutusScript (..), PlutusScriptV1)
 import qualified PlutusTx
 import PlutusTx.Prelude as Plutus
-    ( Bool(..), Eq((==)), (.), (||), length, (&&), Integer, Maybe(..), (>=), fromInteger, (*), ($), (%), (-), map )
+    ( Bool(..), Eq((==)), (.), (||), length, (&&), Integer, Maybe(..), (>=), fromInteger, (*), ($), unsafeRatio, (-), map )
 import Ledger
     ( PubKeyHash(..),
+      PaymentPubKeyHash,
       ValidatorHash,
       Address(Address),
       validatorHash,
@@ -43,7 +44,8 @@ import Ledger
       txInInfoResolved,
       txInfoInputs,
       valuePaidTo,
-      txOutAddress)
+      txOutAddress,
+      unPaymentPubKeyHash)
 import qualified Ledger.Typed.Scripts      as Scripts
 import qualified Plutus.V1.Ledger.Scripts as Plutus
 import           Ledger.Value              as Value ( valueOf )
@@ -69,7 +71,7 @@ mkBuyValidator mp nfts r ctx = case r of
                checkSellerOut (nSeller nfts) (nRoyPrct nfts) (nPrice nfts) &&
                checkRoyalty (nRoyAddr nfts) (nRoyPrct nfts) (nPrice nfts) &&
                checkSingleBuy
-    Close   -> txSignedBy (scriptContextTxInfo ctx) (nSeller nfts)
+    Close   -> txSignedBy (scriptContextTxInfo ctx) $ unPaymentPubKeyHash (nSeller nfts)
 
   where
     info :: TxInfo
@@ -84,13 +86,13 @@ mkBuyValidator mp nfts r ctx = case r of
         length is == 1
 
     checkFee :: Integer -> Bool
-    checkFee price = fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info (feeAddr mp)))) >= 1 % 100 * fromInteger price
+    checkFee price = fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info $ unPaymentPubKeyHash (feeAddr mp)))) >= unsafeRatio 1 100 * fromInteger price
 
-    checkSellerOut :: PubKeyHash -> Integer -> Integer -> Bool
-    checkSellerOut seller royPrct price = fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info seller))) >= (1000 - 10 - royPrct) % 1000 * fromInteger price
+    checkSellerOut :: PaymentPubKeyHash -> Integer -> Integer -> Bool
+    checkSellerOut seller royPrct price = fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info $ unPaymentPubKeyHash seller))) >= unsafeRatio (1000 - 10 - royPrct) 1000 * fromInteger price
 
-    checkRoyalty :: PubKeyHash -> Integer -> Integer -> Bool
-    checkRoyalty royAddr royPrct price = (royPrct == 0) || (fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info royAddr))) >= royPrct % 1000 * fromInteger price)
+    checkRoyalty :: PaymentPubKeyHash -> Integer -> Integer -> Bool
+    checkRoyalty royAddr royPrct price = (royPrct == 0) || (fromInteger (Ada.getLovelace (Ada.fromValue (valuePaidTo info $ unPaymentPubKeyHash royAddr))) >= unsafeRatio royPrct 1000 * fromInteger price)
 
 
 
